@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Power BI Style Big Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+body {
+  font-family: Segoe UI, Arial, sans-serif;
+  background: #f4f6fb;
+  margin: 0;
+  padding: 20px;
+}
+
+h1 {
+  text-align: center;
+  margin-bottom: 10px;
+}
+
+.container {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  gap: 20px;
+}
+
+/* FILTER PANEL */
+.filters {
+  background: white;
+  padding: 15px;
+  border-radius: 14px;
+  box-shadow: 0 6px 16px rgba(0,0,0,0.1);
+}
+
+.filters h3 {
+  margin-top: 0;
+}
+
+.filters label {
+  font-size: 13px;
+  margin-top: 10px;
+  display: block;
+}
+
+.filters input, .filters select {
+  width: 100%;
+  margin-top: 5px;
+}
+
+/* MAIN */
+.main {
+  display: grid;
+  grid-template-rows: auto auto 1fr;
+  gap: 15px;
+}
+
+/* KPI */
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(4,1fr);
+  gap: 15px;
+}
+
+.kpi {
+  background: white;
+  padding: 15px;
+  border-radius: 14px;
+  box-shadow: 0 6px 16px rgba(0,0,0,0.1);
+}
+
+.kpi h4 {
+  margin: 0;
+  font-size: 13px;
+  color: gray;
+}
+
+.kpi p {
+  margin: 5px 0 0;
+  font-size: 22px;
+  font-weight: bold;
+}
+
+/* CHARTS */
+.charts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.chart-box {
+  background: white;
+  padding: 15px;
+  border-radius: 14px;
+  box-shadow: 0 6px 16px rgba(0,0,0,0.1);
+}
+</style>
+</head>
+
+<body>
+
+<h1>📊 Stock Market – Power BI Style Dashboard</h1>
+
+<div class="container">
+
+  <!-- FILTER PANEL -->
+  <div class="filters">
+    <h3>🔎 Filters</h3>
+
+    <label>Month</label>
+    <select id="monthFilter" onchange="applyFilters()">
+      <option value="All">All</option>
+      <option value="Oct">October</option>
+      <option value="Nov">November</option>
+      <option value="Dec">December</option>
+    </select>
+
+    <label>Min Price</label>
+    <input type="range" min="90" max="120" value="90" id="minPrice" oninput="applyFilters()">
+
+    <label>Max Price</label>
+    <input type="range" min="90" max="120" value="120" id="maxPrice" oninput="applyFilters()">
+
+    <label>Min Volume (M)</label>
+    <input type="range" min="1" max="25" value="1" id="minVol" oninput="applyFilters()">
+
+    <label>Max Volume (M)</label>
+    <input type="range" min="1" max="25" value="25" id="maxVol" oninput="applyFilters()">
+
+    <br><br>
+    <button onclick="resetFilters()">Reset Filters</button>
+  </div>
+
+  <!-- MAIN DASHBOARD -->
+  <div class="main">
+
+    <!-- KPIs -->
+    <div class="kpis">
+      <div class="kpi"><h4>Avg Price</h4><p id="avgPrice">-</p></div>
+      <div class="kpi"><h4>Highest Price</h4><p id="highPrice">-</p></div>
+      <div class="kpi"><h4>Lowest Price</h4><p id="lowPrice">-</p></div>
+      <div class="kpi"><h4>Total Volume</h4><p id="totalVol">-</p></div>
+    </div>
+
+    <!-- CHARTS -->
+    <div class="charts">
+      <div class="chart-box"><canvas id="priceChart"></canvas></div>
+      <div class="chart-box"><canvas id="volumeChart"></canvas></div>
+      <div class="chart-box"><canvas id="changeChart"></canvas></div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const rawData = [
+  {m:"Oct", price:98, vol:7.1, ch:-0.6},
+  {m:"Oct", price:101, vol:21.1, ch:-3.7},
+  {m:"Nov", price:103, vol:4.4, ch:2.6},
+  {m:"Nov", price:100, vol:1.0, ch:0.2},
+  {m:"Dec", price:110, vol:3.2, ch:-1.0},
+  {m:"Dec", price:114, vol:5.4, ch:1.2}
+];
+
+let priceChart = new Chart(priceChartCanvas(), {type:"line", data:{labels:[], datasets:[{label:"Price", data:[], tension:0.4}]}});
+let volumeChart = new Chart(volumeChartCanvas(), {type:"bar", data:{labels:[], datasets:[{label:"Volume (M)", data:[]}]}});
+let changeChart = new Chart(changeChartCanvas(), {type:"line", data:{labels:[], datasets:[{label:"Change %", data:[]}]}});
+
+function priceChartCanvas(){return document.getElementById("priceChart")}
+function volumeChartCanvas(){return document.getElementById("volumeChart")}
+function changeChartCanvas(){return document.getElementById("changeChart")}
+
+function applyFilters() {
+  const month = monthFilter.value;
+  const minP = +minPrice.value;
+  const maxP = +maxPrice.value;
+  const minV = +minVol.value;
+  const maxV = +maxVol.value;
+
+  const filtered = rawData.filter(d =>
+    (month==="All"||d.m===month) &&
+    d.price>=minP && d.price<=maxP &&
+    d.vol>=minV && d.vol<=maxV
+  );
+
+  updateKPIs(filtered);
+  updateCharts(filtered);
+}
+
+function updateKPIs(data){
+  if(data.length===0) return;
+  avgPrice.innerText = "₹"+(data.reduce((a,b)=>a+b.price,0)/data.length).toFixed(2);
+  highPrice.innerText = "₹"+Math.max(...data.map(d=>d.price));
+  lowPrice.innerText = "₹"+Math.min(...data.map(d=>d.price));
+  totalVol.innerText = data.reduce((a,b)=>a+b.vol,0).toFixed(2)+"M";
+}
+
+function updateCharts(data){
+  const labels = data.map((_,i)=>i+1);
+  priceChart.data.labels = labels;
+  priceChart.data.datasets[0].data = data.map(d=>d.price);
+  priceChart.update();
+
+  volumeChart.data.labels = labels;
+  volumeChart.data.datasets[0].data = data.map(d=>d.vol);
+  volumeChart.update();
+
+  changeChart.data.labels = labels;
+  changeChart.data.datasets[0].data = data.map(d=>d.ch);
+  changeChart.update();
+}
+
+function resetFilters(){
+  monthFilter.value="All";
+  minPrice.value=90;
+  maxPrice.value=120;
+  minVol.value=1;
+  maxVol.value=25;
+  applyFilters();
+}
+
+applyFilters();
+</script>
+
+</body>
+</html>
